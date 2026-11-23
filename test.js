@@ -1,0 +1,23 @@
+const assert = require('node:assert/strict');
+const vm = require('node:vm');
+const fs = require('node:fs');
+const elements = {};
+for (const id of ['book-form', 'title', 'author', 'book-list']) elements[id] = {};
+const [form, title, author, list] = ['book-form', 'title', 'author', 'book-list'].map(id => elements[id]);
+form.addEventListener = (_, callback) => { form.submit = callback; };
+form.reset = () => { title.value = ''; author.value = ''; };
+title.focus = () => { title.focused = true; };
+list.replaceChildren = (...items) => { list.items = items; };
+const document = { querySelector: selector => elements[selector.slice(1)], createElement: () => ({}) };
+vm.runInNewContext(fs.readFileSync('script.js', 'utf8'), { document });
+function add(name, writer) { title.value = name; author.value = writer; form.submit({ preventDefault() {} }); }
+add('  Мастер и Маргарита  ', 'Михаил Булгаков');
+assert.equal(list.items[0].textContent, 'Мастер и Маргарита — Михаил Булгаков');
+assert.equal(title.value, '');
+assert.equal(author.value, '');
+assert.equal(title.focused, true);
+add('Собачье сердце', 'Михаил Булгаков');
+assert.equal(list.items.length, 2);
+assert.equal(list.items[1].textContent, 'Собачье сердце — Михаил Булгаков');
+add('   ', 'Автор');
+assert.equal(list.items.length, 2);
